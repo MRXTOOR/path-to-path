@@ -9,10 +9,8 @@ import (
 	"strings"
 )
 
-// DependencyMap хранит зависимости: файл -> список импортируемых пакетов
 type DependencyMap map[string][]string
 
-// findGoFiles рекурсивно ищет все .go файлы в директории
 func findGoFiles(root string) ([]string, error) {
 	var files []string
 	err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
@@ -27,7 +25,6 @@ func findGoFiles(root string) ([]string, error) {
 	return files, err
 }
 
-// parseImports возвращает список импортов для файла
 func parseImports(filename string) ([]string, error) {
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, filename, nil, parser.ImportsOnly)
@@ -55,7 +52,6 @@ func buildImportToFileMap(files []string) map[string]string {
 	return importToFile
 }
 
-// detectCycles ищет циклы в зависимостях
 func detectCycles(depMap DependencyMap) map[string]map[string]bool {
 	cycles := make(map[string]map[string]bool)
 	var visit func(string, map[string]bool)
@@ -99,16 +95,13 @@ func main() {
 		depMap[file] = imports
 	}
 
-	// Карта: имя пакета -> файл
 	importToFile := buildImportToFileMap(files)
 
-	// Обратная карта: файл -> имя пакета
 	fileToPkg := make(map[string]string)
 	for pkg, file := range importToFile {
 		fileToPkg[file] = pkg
 	}
 
-	// Карта для быстрого поиска: импортируемый путь -> файл
 	importPathToFile := make(map[string]string)
 	for _, file := range files {
 		fset := token.NewFileSet()
@@ -119,7 +112,6 @@ func main() {
 		importPathToFile[f.Name.Name] = file
 	}
 
-	// Для поиска циклов
 	cycles := detectCycles(depMap)
 
 	fmt.Println("Зависимости между файлами:")
@@ -128,16 +120,13 @@ func main() {
 		seen := make(map[string]bool)
 		for _, imp := range imports {
 			mark := ""
-			// Проверка: есть ли такой пакет среди файлов
 			if _, ok := importPathToFile[imp]; !ok {
 				mark = " ❌ (файл не найден)"
 			}
-			// Проверка на дубликаты
 			if seen[imp] {
 				mark = " ❌ (дублируется)"
 			}
 			seen[imp] = true
-			// Проверка на циклы
 			if cycles[file] != nil && cycles[file][imp] {
 				mark = " ❌ (цикл)"
 			}
